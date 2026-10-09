@@ -509,12 +509,41 @@ class HSR(Robot):
         with open(self.hsr_urdf,"r") as f:
             self.urdf_string = f.read()
 
+        # this gives us virtual joint values for the base so that the IK calculation can use them
+        virtual_base_xml = """
+            <link name="world_base"/>
+            <link name="virtual_base_x_link"/>
+            <joint name="virtual_base_x_joint" type="prismatic">
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <parent link="world_base"/>
+                <child link="virtual_base_x_link"/>
+                <axis xyz="1 0 0"/>
+                <limit lower="-5.0" upper="5.0" effort="100.0" velocity="1.0"/>
+            </joint>
+            <link name="virtual_base_y_link"/>
+            <joint name="virtual_base_y_joint" type="prismatic">
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <parent link="virtual_base_x_link"/>
+                <child link="virtual_base_y_link"/>
+                <axis xyz="0 1 0"/>
+                <limit lower="-5.0" upper="5.0" effort="100.0" velocity="1.0"/>
+            </joint>
+            <joint name="virtual_base_yaw_joint" type="revolute">
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <parent link="virtual_base_y_link"/>
+                <child link="base_footprint"/>
+                <axis xyz="0 0 1"/>
+                <limit lower="-3.14159" upper="3.14159" effort="100.0" velocity="1.0"/>
+            </joint>
+            </robot>"""
+        augmented_urdf = self.urdf_string.replace("</robot>", virtual_base_xml)
+
         # the IK solvers for the given object
         # IK(base,tip,URDF)
         # it traces out all of the joints intermediate using the tree of joints
         # URDF gives the solver all of the mathematical detail for solving
         # ik_solver: an ik solver specifically for solving this
-        self.ik_solver = IK("base_link","hand_palm_link",urdf_string=self.urdf_string)
+        self.ik_solver = IK("world_base","hand_palm_link",urdf_string=augmented_urdf)
     
     # this sets the limits for movement to whatever limits dictates
     def set_translation_limits(self,limits):
@@ -610,7 +639,7 @@ class HSR(Robot):
         self.obj.SetActiveDOFs([self.obj.GetJoint(name).GetDOFIndex() for name in self.jointnames])
 
     def activate_body(self):
-        self.obj.SetActiveDOFs([self.obj.GetJoint(name).getDOFIndex() for name in self.jointnames], sim.DOFAffine.X | sim.DOFAffine.Y | sim.DOFAffine.RotationAxis)
+        self.obj.SetActiveDOFs([self.obj.GetJoint(name).GetDOFIndex() for name in self.jointnames], sim.DOFAffine.X | sim.DOFAffine.Y | sim.DOFAffine.RotationAxis)
     
     # blockPrinting: turns off all of the cpp terminal output from openRAVE
 
@@ -631,7 +660,7 @@ class HSR(Robot):
                     return [ ]
         
         else:
-            self.activate_manip_joints()
+            self.activate_body()
             current_state = self.obj.GetActiveDOFValues()
             collision = check_collisions
             
@@ -639,21 +668,21 @@ class HSR(Robot):
             # this calculates the robot end position wrt to the base of the robot
             required_T = np.linalg.pinv(self.base_link.GetTransform()).dot(end_effector_solution)
             # calls the function to get T to be in form [x,y,z,rx,ry,rz]
-            pose = sixd_pose_from_transform(required_T)
+            pose = sixd_pose_from_transform(end_effector_solution)
             # position value for the pose [x,y,z]
             pos = pose[:3]
             # this gets you the quaternion for the pose
             # [theta, qx,qy,qz]
             orn = sim.quatFromAxisAngle(pose[3:])
-            print(orn)
 
             ik_count = 0
             collision = True
             while collision:
-                # inital guess, where for each dof you make a guess between -pi and pi
+
                 # this needs to be the same size as the dof
                 lower_limits, upper_limits = self.obj.GetActiveDOFLimits()
                 seed_state = np.random.uniform(lower_limits,upper_limits).tolist()
+                seed_state = seed_state[5:] + seed_state[:5]
                 # use the IK solver to compute what DOF values each joint should take to get the solution
                 solutions = self.ik_solver.get_ik(seed_state,
                                                  pos[0], pos[1], pos[2],  # X, Y, Z
@@ -661,6 +690,9 @@ class HSR(Robot):
                                                  0.001, 0.001, 0.001, # x y z tols
                                                  0.01, 0.01, 0.01 # angle tolerances
                                                  )
+                # convert the solutions to be arm, body
+                if solutions is not None:
+                    solutions = solutions[3:] + solutions[:3]
                 ik_count += 1
                 # check for collision and if the IK has ran too many times
                 if ik_count<=SimConfig.MAX_IK_ATTEMPTS:

@@ -101,6 +101,8 @@ class SimClass(Simulator):
 
         if len(last_wp) == 3:
             self.robot.activate_base_joints()
+        elif len(last_wp) == 8:
+            self.robot.activate_body()
         else:
             self.robot.activate_manip_joints()
 
@@ -326,6 +328,8 @@ class SimClass(Simulator):
                         wp = traj.GetWaypoint(0)
                         if len(wp) == 3:
                             robot.activate_base_joints()
+                        elif len(wp) == 8:
+                            robot.activate_body()
                         else:
                             robot.activate_manip_joints()
 
@@ -435,6 +439,8 @@ class SimClass(Simulator):
     def compute_motion_plan(self,goal,robot=None):
         if len(goal) == 3:
             self.robot.activate_base_joints()
+        elif len(goal) == 8:
+            self.robot.activate_body()
         else:
             self.robot.activate_manip_joints()
 
@@ -482,6 +488,8 @@ class SimClass(Simulator):
                 wp = traj.GetWaypoint(i)
                 if len(wp) == 3:
                     self.robot.activate_base_joints()
+                elif len(wp) == 8:
+                    self.robot.activate_body()
                 else:
                     self.robot.activate_manip_joints()
                     
@@ -515,6 +523,8 @@ class SimClass(Simulator):
             wp = traj[0]
             if len(wp) == 3:
                 self.robot.activate_base_joints()
+            elif len(wp) == 8:
+                self.robot.activate_body()
             else:
                 self.robot.activate_manip_joints()
 

@@ -35,7 +35,7 @@ class Config():
     TEST_DIR = ROOT_DIR + "test_trajectories/"
     KNOWN_COST = 1
     UNKNOWN_COST = 100
-    MAX_IK_ATTEMPTS = 25
+    MAX_IK_ATTEMPTS = 5
     MAX_CALL_COUNTS = 100
     SAMPLE_COUNT = 10
     MP_MAX_COUNT = 5
