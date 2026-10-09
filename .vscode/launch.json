@@ -1,0 +1,57 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Run gen_data Yumi",
+            "type": "python",
+            "request": "launch",
+            "python": "/usr/bin/python",
+            "program": "${workspaceFolder}/gen_data.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--domain",
+                "Keva"
+            ]
+        },
+        {
+            "name": "Python: HSR Test",
+            "type": "python",
+            "request": "launch",
+            "python": "/usr/bin/python",
+            "program": "${workspaceFolder}/gen_data.py",
+            "console": "integratedTerminal",
+            "env": {
+                "DISPLAY": ":0",
+            },
+            "args": [
+                "--domain",
+                "CafeWorld",
+                "--robot",
+                "HSR",
+                "--false_load_arguments",
+                "-n",
+                "env1",
+                "-p",
+                "1",
+                "-v"
+            ]
+        },
+        {
+            "name": "Python: Run gen_data",
+            "type": "python",
+            "request": "launch",
+            "python": "/usr/bin/python",
+            "program": "${workspaceFolder}/gen_data.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--domain",
+                "CafeWorld",
+                "--robot",
+                "Fetch",
+            ]
+        }
+    ]
+}

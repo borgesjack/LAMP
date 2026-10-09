@@ -1,9 +1,10 @@
 {
     "Keva": {
         "general": {
-            "robot": "MagicGripper",
+            "robot": "yumi",
             "env_list": ["env1", "env2", "env3", "env4", "env5", "env6", "env7", "env8", "env11", "env12", "env13", "env14", "env15", "env16", "env17", "env18"],
-            "random_count": 20
+            "random_count": 20,
+            "visualize":"store_true"
         },
         "problems": {
             "env1":{
@@ -127,7 +128,8 @@
             "robot": "Fetch",
             "env_list": ["env1", "env2", "env3", "env4", "env5", "env6", "env7", "env8"],
             "object_count": 1,
-            "random_count": 50
+            "random_count": 50,
+            "visualize": "store_true"
         },
         "problems": {
             "env1":{
