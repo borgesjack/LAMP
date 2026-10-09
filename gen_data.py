@@ -28,7 +28,7 @@ if __name__ == "__main__":
     argParser.add_argument(     "--set_y_flag",               help = "flag for setting objects on y axis",   action="store_true")
     argParser.add_argument(     "--complete_random",          help = "flag for collecting random trajs",     action="store_true")
     argParser.add_argument(     "--false_load_arguments",     help = "don't load arguments",                 action="store_false")
-    argParser.add_argument("-r","--robot",                    help = "name of robot",                        )
+    argParser.add_argument("-r","--robot",                    help = "name of robot (e.g., Fetch, HSR, yumi)", choices=["Fetch", "HSR", "yumi", "MagicGripper", "MagneticGripper"], default=None)
     argParser.add_argument("-d","--domain",                    help = "name of domain",                        )
     
     args, unknown_args = argParser.parse_known_args()

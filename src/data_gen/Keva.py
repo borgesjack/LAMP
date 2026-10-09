@@ -4,6 +4,7 @@ import tqdm
 import os
 import time
 from Config import Config
+from simulators.openrave.sim_utils import plot_transform
 import useful_functions
 from copy import deepcopy
 
@@ -138,6 +139,8 @@ class Keva(object):
         t = np.matmul(world_T_obj,obj_T_robot)
         pose = useful_functions.sixd_pose_from_transform(t)
         
+        plot_transform(self.sim_object.env, pose, s=0.18)
+
         return pose
 
     def set_goalLoc(self,planks_to_set=None):

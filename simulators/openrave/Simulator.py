@@ -3,6 +3,7 @@ import sys
 
 import openravepy
 
+# this class is the origin for the openRAVE simulator stuff
 class Simulator(object):
     def __getattr__(self,name):
         if hasattr(openravepy,name):

@@ -351,6 +351,7 @@ class CafeWorld(object):
         wrist_pose_wrt_gripper = np.matmul(np.linalg.inv(gripper_pose), wrist_roll_pose)
 
         grasp_T = world_T_obj.dot(rot_mat).dot(obj_T_gripper)
+        grasp_axes = plot_transform(self.sim_object.env, grasp_T, s=0.15)
         # grasp_T = np.matmul(grasp_T,wrist_pose_wrt_gripper)
         
         ik_sols = self.sim_object.robot.get_ik_solutions(grasp_T,collision_fn=self.sim_object.collision_check)
