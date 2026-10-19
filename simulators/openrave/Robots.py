@@ -114,6 +114,9 @@ class Robot(Object):
     def activate_manip_joints(self):
         pass
     
+    def activate_body(self):
+        pass
+
     # wrapper method to call openRAVE API
     def set_active_dof_values(self,values):
         self.obj.SetActiveDOFValues(values)
@@ -161,6 +164,7 @@ class Robot(Object):
         if current_active_dof == 3:
             self.activate_base_joints()
             t = self.get_link("base_link").GetTransform()
+        # this might need to be edited later for the HSR to work but a good start for accommodating the activate_body method
         else:
             self.activate_manip_joints()
             t = self.gripper_link.GetTransform()

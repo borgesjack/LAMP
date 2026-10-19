@@ -14,7 +14,9 @@ Object = Config.get_simulator_module("Object").Object
 model_gen_utils = Config.get_simulator_module("model_gen_utils")
 
 class CafeWorld(object):
+    # this init is called by the domain_class call in gen_data
     def __init__(self,env_name,number_of_configs=1,number_of_mp=1,axis_for_offset="x",file_name="_data",reference_structure_name=None,visualize=False,object_count=None,random=False,order=False,surface="",objects_in_init_state=0,quadrant=None,grasp_num=None,minimum_object_count=None,mp=True,num_robots=1,structure_dependance=False,object_list=[],experiment_flag=False,real_world_experiment=False,set_y=False,complete_random=False,data_gen=False,robot_name=Config.ROBOT_NAME):
+        # create the robot
         self.sim_object = SimClass(robot_name=robot_name,
                                    visualize=visualize)
             
@@ -243,6 +245,7 @@ class CafeWorld(object):
         self.sim_object.robot.activate_base_joints()
         current_dof_vals = self.sim_object.robot.get_active_dof_values()
 
+        # this is calculating where the robot should stand to be .4m away from the table when it approaches
         diff = 0.4
         table = self.sim_object.get_obj(surface_name)
         table_t = table.get_transform()
@@ -290,8 +293,10 @@ class CafeWorld(object):
 
         return False
 
+    # this just generates random coordinates for tables and sets them in the env while checking for collision
     def table_randomizer(self):
         objects_to_remove = set()
+        # remove all of the objects that are set as surfaces from the collision
         for obj in self.sim_object.collision_set:
             if obj.get_name().startswith("surface"):
                 objects_to_remove.add(obj)
@@ -351,7 +356,6 @@ class CafeWorld(object):
         wrist_pose_wrt_gripper = np.matmul(np.linalg.inv(gripper_pose), wrist_roll_pose)
 
         grasp_T = world_T_obj.dot(rot_mat).dot(obj_T_gripper)
-        grasp_axes = plot_transform(self.sim_object.env, grasp_T, s=0.15)
         # grasp_T = np.matmul(grasp_T,wrist_pose_wrt_gripper)
         
         ik_sols = self.sim_object.robot.get_ik_solutions(grasp_T,collision_fn=self.sim_object.collision_check)
@@ -450,10 +454,12 @@ class CafeWorld(object):
         return traj_config
 
     def randomize_env(self,given_surface_lists=None,req_relation=None,traj_count=0,traj_config=None,configs_to_exclude=set([])):
+        # add the robot and all the objects to the collision set 
         self.sim_object.collision_set.add(self.sim_object.robot)
         for obj_name in self.bound_object_name:
             self.sim_object.collision_set.add(self.sim_object.get_obj(obj_name))
 
+        # this moves every obj up 10 units
         t = np.eye(4)
         t[2,3] = 10
         for obj in self.added_objects:
@@ -465,6 +471,7 @@ class CafeWorld(object):
         random_range = self.get_random_range()
         random_limits = zip(*random_range)
         self.sim_object.robot.activate_base_joints()
+        # this needs to make sure that it sets up the HSR bot correctly
         self.sim_object.robot.random_config_robot(limits=random_limits,collision_fn=self.sim_object.collision_check,use_collision_set=True)
 
         quadrant_ranges = {}
@@ -476,6 +483,7 @@ class CafeWorld(object):
         else:
             objects_to_set = self.object_count
 
+        # this is taking the possible initial starting positions given the traj_config param
         if traj_config is None:
             # traj_config = self.set_traj_config(given_surface_lists,traj_count)
             possible_configs = self.get_possible_configs(objects_to_set,configs_to_exclude)
@@ -483,13 +491,19 @@ class CafeWorld(object):
             possible_configs = [a for a,_ in traj_config]
 
         init_configs = []
+        # this is for initializing the objects that need to be set
         while len(init_configs) < objects_to_set:
+            # take the first possible configuration
             init_config = possible_configs.pop(0)
+            # take the can name of the first config and assign this to that
             can_name = init_config[0]
+            # assign can to the openrave obj
             can = self.sim_object.get_obj(can_name)
+            # if this object has already been added then pop it back on to get a different can?
             if can in self.added_objects or init_config in init_configs:
                 possible_configs.append(init_config)
                 continue
+            # assign the surface the same way that you assigned the can for the config
             init_surface_name = init_config[1]
             init_surface_id = int(init_surface_name.split("_")[Config.OBJ_ID_IND])
             init_surface_T = self.sim_object.get_obj(init_surface_name).get_transform()
@@ -522,7 +536,7 @@ class CafeWorld(object):
                     continue
                 else:
                     init_configs.append(init_config)
-            
+            # this block has something to do with the rcrs
             else:
                 rcr = [r.region for r in req_relation]
                 sampler = getattr(self,"sample_can_{}".format(init_surface_type))
@@ -564,18 +578,22 @@ class CafeWorld(object):
             traj_config = self.get_traj_config(init_configs,possible_configs)
 
         obj_dic = {}
+        # this portion is adding all the different objects that need to be created to the return dict
         for obj in self.sim_object.get_objects():
             if str(obj.get_name()) not in self.bound_object_name:
                 if obj != self.sim_object.robot:
                     name = str(obj.get_name())
                     obj_dic[name] = obj.get_transform()
                 else:
+                    # this might be something that wouldnt work with hsr but might actually work considering you can still manip if you want
+                    # using the different things
                     self.sim_object.robot.activate_manip_joints()
                     obj_dic["gripper_1"] = self.sim_object.robot.get_active_dof_values()
 
                     self.sim_object.robot.activate_base_joints()
                     obj_dic["freight_1"] = self.sim_object.robot.get_active_dof_values()
         
+        # this returns the list of objects that need to be initalized
         return obj_dic, traj_config[:objects_to_set]
 
     def set_traj_config(self,given_surface_lists=None,traj_count=0):
@@ -644,11 +662,13 @@ class CafeWorld(object):
         return traj_config
 
     def setup_objects(self,init_object_dict):
+        # release held obj if holding something
         self.sim_object.robot.release()
         for obj_name in init_object_dict.keys():
             if obj_name not in self.sim_object.robot.robot_type_object_mappings.values():
                 obj = self.sim_object.get_obj(obj_name)
                 obj.set_transform(init_object_dict[obj_name])
+            # I think this code might work for the hsr bot but not super sure
             else:
                 dof_val = init_object_dict[obj_name]
                 if len(dof_val) == 3:
@@ -769,7 +789,9 @@ class CafeWorld(object):
             while j <= self.j:
                 self.setup_objects(init_object_dic)
                 state_list = []
-
+                
+                # traj_config -> [((obj, table),(obj, endtable)),...]
+                # for every sequence of trajectories that is setup in the example do all of this
                 for init_config,goal_config in traj_config:
                     object_name, surface1_name = init_config
                     _, surface2_name = goal_config
@@ -785,7 +807,7 @@ class CafeWorld(object):
                     else:
                         surface2_type = "table"
 
-                    #KP_1
+                    #KP_1 -> this is the initial state for the random pose the robot starts in
                     self.sim_object.robot.activate_manip_joints()
                     current_dof = self.sim_object.robot.get_active_dof_values()
                     random_pose,_ = self.sim_object.robot.random_config_robot(current_dof=current_dof,collision_fn=self.sim_object.collision_check)
@@ -795,6 +817,7 @@ class CafeWorld(object):
                     base_sampler = getattr(self,"sample_robot_base_{}".format(surface1_type))
 
                     # print("sampling surface 1")
+                    # this is getting the pose to get to surface1
                     base_sample_1,_ = base_sampler(surface_name=surface1_name)
                         
                     if base_sample_1 is None:
@@ -803,12 +826,14 @@ class CafeWorld(object):
                         else:
                             flag=2
                         break
-
+                    
+                    # this is setting the dof values to the planned pose next to surface1
                     self.sim_object.robot.activate_base_joints()
                     init_base_pose = self.sim_object.robot.get_active_dof_values()
                     self.sim_object.robot.set_active_dof_values(base_sample_1)
 
                     # print("grasp sampling")
+                    # this gets us a pose for planning for the arm
                     traj_2,_ = self.motion_plan_robot_arm(init_config,grasp_num=self.grasp_num,surface_id=surface1_id)
 
                     if traj_2 is None:
