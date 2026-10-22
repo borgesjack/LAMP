@@ -23,9 +23,6 @@
             "python": "/usr/bin/python",
             "program": "${workspaceFolder}/gen_data.py",
             "console": "integratedTerminal",
-            "env": {
-                "DISPLAY": ":0",
-            },
             "args": [
                 "--domain",
                 "CafeWorld",
@@ -36,7 +33,9 @@
                 "env1",
                 "-p",
                 "1",
-                "-v"
+                "-v",
+                "-g",
+                "0"
             ]
         },
         {

@@ -51,7 +51,7 @@ if __name__ == "__main__":
     set_y_flag = args.set_y_flag
     complete_random = args.complete_random
     false_load_arguments = args.false_load_arguments
-    random_count = 0
+    random_count = 1
 
     DomainClass = get_domain_class(Config.DOMAIN_NAME)
 

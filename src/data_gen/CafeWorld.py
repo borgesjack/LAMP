@@ -23,7 +23,6 @@ class CafeWorld(object):
         self.order = order
         self.env_name = env_name
         print(self.env_name)
-        
         self.n = number_of_configs
         self.j = number_of_mp
 
@@ -332,31 +331,53 @@ class CafeWorld(object):
             world_T_obj = pose
         else:
             world_T_obj = self.sim_object.get_obj(object_name).get_transform()
-                        
-        self.sim_object.robot.activate_manip_joints()
 
-        rot_Z = useful_functions.rotmat_from_rotvec([0, 0, -np.pi/2])
-        valid_pose = None
-        gripper_offset = self.sim_object.robot.grasping_offset[Config.OBJECT_NAME[0]]
-        if grasp_num is None:
-            j = np.random.choice(range(j))
-        else:
-            if surface_id != 0:
-                j = grasp_num
+        # this section is the hsr section go until get grasp_T
+        if 'hsr' in self.sim_object.robot.get_name():
+            # first get the pose of the can wrt to the world
+            self.sim_object.robot.activate_body()
+            world_T_object = self.sim_object.get_obj(object_name).get_transform()
+            world_T_robot = self.sim_object.robot.get_link_transform("hand_palm_link")
+
+            gripper_offset = self.sim_object.robot.grasping_offset["can"]
+            object_T_gripper = useful_functions.transform_from_sevend_pose([1, 0, 0, 0, -0.06, 0, self.can_h/2.0])
+            object_T_gripper = np.matmul(useful_functions.rotmat_from_rotvec([0,0,np.pi]),object_T_gripper)
+
+            robot_T_object = np.matmul(np.linalg.inv(world_T_robot), world_T_object)
+
+            t1 = useful_functions.rotmat_from_rotvec([0, np.pi/2, 0])
+            t2 = useful_functions.rotmat_from_rotvec([0, 0, np.pi])
+
+            # get the grasp pose which is the combination of the can wrt world and the gripper wrt can
+            grasp_T = np.matmul(np.matmul(world_T_object, object_T_gripper),np.matmul(t1,t2))
+
+
+        if 'fetch' in self.sim_object.robot.get_name():
+            # this section is the fetch section got until you get grasp_T
+            self.sim_object.robot.activate_manip_joints()
+
+            rot_Z = useful_functions.rotmat_from_rotvec([0, 0, -np.pi/2])
+            valid_pose = None
+            gripper_offset = self.sim_object.robot.grasping_offset[Config.OBJECT_NAME[0]]
+            if grasp_num is None:
+                j = np.random.choice(range(j))
             else:
-                j = 1
+                if surface_id != 0:
+                    j = grasp_num
+                else:
+                    j = 1
 
-        rot_ang = (j * (2*np.pi) / Config.NUM_GRASPS)
-        # print(rot_ang)
-        obj_T_gripper = useful_functions.transform_from_sevend_pose([1, 0, 0, 0, gripper_offset, 0, self.can_h/2.0])
-        rot_mat = useful_functions.rotmat_from_rotvec([0, 0, rot_ang])
+            rot_ang = (j * (2*np.pi) / Config.NUM_GRASPS)
+            # print(rot_ang)
+            obj_T_gripper = useful_functions.transform_from_sevend_pose([1, 0, 0, 0, gripper_offset, 0, self.can_h/2.0])
+            rot_mat = useful_functions.rotmat_from_rotvec([0, 0, rot_ang])
 
-        wrist_roll_pose = self.sim_object.robot.get_link_transform("wrist_roll_link")
-        gripper_pose = self.sim_object.robot.get_link_transform("gripper_link")
-        wrist_pose_wrt_gripper = np.matmul(np.linalg.inv(gripper_pose), wrist_roll_pose)
+            wrist_roll_pose = self.sim_object.robot.get_link_transform("wrist_roll_link")
+            gripper_pose = self.sim_object.robot.get_link_transform("gripper_link")
+            wrist_pose_wrt_gripper = np.matmul(np.linalg.inv(gripper_pose), wrist_roll_pose)
 
-        grasp_T = world_T_obj.dot(rot_mat).dot(obj_T_gripper)
-        # grasp_T = np.matmul(grasp_T,wrist_pose_wrt_gripper)
+            grasp_T = world_T_obj.dot(rot_mat).dot(obj_T_gripper)
+            # grasp_T = np.matmul(grasp_T,wrist_pose_wrt_gripper)
         
         ik_sols = self.sim_object.robot.get_ik_solutions(grasp_T,collision_fn=self.sim_object.collision_check)
         if len(ik_sols) > 0:
@@ -833,7 +854,8 @@ class CafeWorld(object):
                     self.sim_object.robot.set_active_dof_values(base_sample_1)
 
                     # print("grasp sampling")
-                    # this gets us a pose for planning for the arm
+                    # this gets us a pose for planning for the arm, during all of this to state_2 for HSR you are just doing one step where you plan to the can
+                    # in the case for HSR this needs to be doing the whole body to grasp the can correctly
                     traj_2,_ = self.motion_plan_robot_arm(init_config,grasp_num=self.grasp_num,surface_id=surface1_id)
 
                     if traj_2 is None:
@@ -846,13 +868,6 @@ class CafeWorld(object):
                     self.sim_object.robot.activate_base_joints()
                     self.sim_object.robot.set_active_dof_values(init_base_pose)
                     # print("motion planning for base to surface 1")
-                    traj_1, base_sample_1 = self.motion_plan_robot_base(init_config,given_pose=base_sample_1)
-                    if traj_1 is None:
-                        if j == 0:
-                            flag=1
-                        else:
-                            flag=2
-                        break
                     
                     #KP_2
                     state_2 = self.sim_object.get_state_block(traj=traj_1,config_tuple=init_config)
