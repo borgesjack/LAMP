@@ -382,6 +382,8 @@ class CafeWorld(object):
         ik_sols = self.sim_object.robot.get_ik_solutions(grasp_T,collision_fn=self.sim_object.collision_check)
         if len(ik_sols) > 0:
             valid_pose = ik_sols
+        else:
+            valid_pose = None
         
         return valid_pose
 
@@ -394,9 +396,19 @@ class CafeWorld(object):
         else:
             surface_type = "table"
         
-        wrist_roll_pose = self.sim_object.robot.get_link_transform("wrist_roll_link")
-        gripper_pose = self.sim_object.robot.get_link_transform("gripper_link")
-        wrist_pose_wrt_gripper = np.matmul(np.linalg.inv(gripper_pose), wrist_roll_pose)
+        if 'fetch' in self.sim_object.robot.get_name():
+            wrist_roll_pose = self.sim_object.robot.get_link_transform("wrist_roll_link")
+            gripper_pose = self.sim_object.robot.get_link_transform("gripper_link")
+            wrist_pose_wrt_gripper = np.matmul(np.linalg.inv(gripper_pose), wrist_roll_pose)
+        
+        if 'hsr' in self.sim_object.robot.get_name():
+            object_T_gripper = useful_functions.transform_from_sevend_pose([1, 0, 0, 0, -0.06, 0, self.can_h/2.0])
+            object_T_gripper = np.matmul(useful_functions.rotmat_from_rotvec([0,0,np.pi]),object_T_gripper)
+
+            t1 = useful_functions.rotmat_from_rotvec([0, np.pi/2, 0])
+            t2 = useful_functions.rotmat_from_rotvec([0, 0, np.pi])
+            t3 = np.matmul(t1,t2)
+
 
         count = 0
         valid_ik = None
@@ -416,14 +428,22 @@ class CafeWorld(object):
             sampler = getattr(self,"sample_can_{}".format(surface_type))
             sample_obj_pose = sampler(object_name=obj_name,surface_name=surface_name,range=quadrant_range)
             
-            sample_obj_pose[2,3] += self.can_h/2.0
-            grasp_pose = sample_obj_pose.dot(wrist_pose_wrt_gripper)
+            if 'fetch' in self.sim_object.robot.get_name():
+                sample_obj_pose[2,3] += self.can_h/2.0
+                grasp_pose = sample_obj_pose.dot(wrist_pose_wrt_gripper)
+
+            if 'hsr' in self.sim_object.robot.get_name():
+                grasp_pose = np.matmul(np.matmul(sample_obj_pose, object_T_gripper),t3)
+
             ik_sols = self.sim_object.robot.get_ik_solutions(grasp_pose,collision_fn=self.sim_object.collision_check)
             if len(ik_sols) > 0:
                 valid_ik = ik_sols
             
             count+=1
-
+        
+        if len(ik_sols) < 1:
+            valid_ik = None
+        
         return valid_ik
 
     def get_random_range(self):
@@ -834,24 +854,26 @@ class CafeWorld(object):
                     random_pose,_ = self.sim_object.robot.random_config_robot(current_dof=current_dof,collision_fn=self.sim_object.collision_check)
                     state_1 = self.sim_object.get_state_block(traj=[random_pose],config_tuple=init_config)
                     # state_1 = [self.sim_object.get_current_state()]
-		
-                    base_sampler = getattr(self,"sample_robot_base_{}".format(surface1_type))
 
-                    # print("sampling surface 1")
-                    # this is getting the pose to get to surface1
-                    base_sample_1,_ = base_sampler(surface_name=surface1_name)
+                    # want in the case of fetch to move to table before planning, in case of hsr we dont care plan as one
+                    if 'fetch' in self.sim_object.robot.get_name():
+                        base_sampler = getattr(self,"sample_robot_base_{}".format(surface1_type))
+
+                        # print("sampling surface 1")
+                        # this is getting the pose to get to surface1
+                        base_sample_1,_ = base_sampler(surface_name=surface1_name)
+                            
+                        if base_sample_1 is None:
+                            if j == 0:
+                                flag=1
+                            else:
+                                flag=2
+                            break
                         
-                    if base_sample_1 is None:
-                        if j == 0:
-                            flag=1
-                        else:
-                            flag=2
-                        break
-                    
-                    # this is setting the dof values to the planned pose next to surface1
-                    self.sim_object.robot.activate_base_joints()
-                    init_base_pose = self.sim_object.robot.get_active_dof_values()
-                    self.sim_object.robot.set_active_dof_values(base_sample_1)
+                        # this is setting the dof values to the planned pose next to surface1
+                        self.sim_object.robot.activate_base_joints()
+                        init_base_pose = self.sim_object.robot.get_active_dof_values()
+                        self.sim_object.robot.set_active_dof_values(base_sample_1)
 
                     # print("grasp sampling")
                     # this gets us a pose for planning for the arm, during all of this to state_2 for HSR you are just doing one step where you plan to the can
@@ -865,12 +887,13 @@ class CafeWorld(object):
                             flag=2
                         break
                     
-                    self.sim_object.robot.activate_base_joints()
-                    self.sim_object.robot.set_active_dof_values(init_base_pose)
-                    # print("motion planning for base to surface 1")
+                    if 'fetch' in self.sim_object.robot.get_name():
+                        self.sim_object.robot.activate_base_joints()
+                        self.sim_object.robot.set_active_dof_values(init_base_pose)
+                        # print("motion planning for base to surface 1")
                     
                     #KP_2
-                    state_2 = self.sim_object.get_state_block(traj=traj_1,config_tuple=init_config)
+                    state_2 = self.sim_object.get_state_block(traj=traj_2,config_tuple=init_config)
                     #KP_3
                     state_3 = []                    
                     random_traj = self.compute_random_mp()                    
