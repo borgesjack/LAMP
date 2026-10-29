@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 OBJECT_NAME = ["can"]
-ROBOT_NAME = "Fetch"
+ROBOT_NAME = "HSR"
 SURFACES = ["countertop","table"]
 
 MVG_SCORE_THRESHOLD = 3

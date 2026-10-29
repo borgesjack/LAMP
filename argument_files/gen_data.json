@@ -125,7 +125,7 @@
 
     "CafeWorld": {
         "general": {
-            "robot": "Fetch",
+            "robot": "HSR",
             "env_list": ["env1", "env2", "env3", "env4", "env5", "env6", "env7", "env8"],
             "object_count": 1,
             "random_count": 50,

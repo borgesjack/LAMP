@@ -522,7 +522,7 @@ class HSR(Robot):
                 <parent link="world_base"/>
                 <child link="virtual_base_x_link"/>
                 <axis xyz="1 0 0"/>
-                <limit lower="-20.0" upper="20.0" effort="100.0" velocity="1.0"/>
+                <limit lower="-40.0" upper="40.0" effort="100.0" velocity="1.0"/>
             </joint>
             <link name="virtual_base_y_link"/>
             <joint name="virtual_base_y_joint" type="prismatic">
@@ -530,7 +530,7 @@ class HSR(Robot):
                 <parent link="virtual_base_x_link"/>
                 <child link="virtual_base_y_link"/>
                 <axis xyz="0 1 0"/>
-                <limit lower="-20.0" upper="20.0" effort="100.0" velocity="1.0"/>
+                <limit lower="-40.0" upper="40.0" effort="100.0" velocity="1.0"/>
             </joint>
             <joint name="virtual_base_yaw_joint" type="revolute">
                 <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -682,7 +682,6 @@ class HSR(Robot):
             ik_count = 0
             collision = True
             while collision:
-
                 # this needs to be the same size as the dof
                 lower_limits, upper_limits = self.obj.GetActiveDOFLimits()
                 seed_state = np.random.uniform(lower_limits,upper_limits).tolist()

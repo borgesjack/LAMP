@@ -352,8 +352,8 @@ class CafeWorld(object):
             grasp_T = np.matmul(np.matmul(world_T_object, object_T_gripper),np.matmul(t1,t2))
 
 
-        if 'fetch' in self.sim_object.robot.get_name():
-            # this section is the fetch section got until you get grasp_T
+        if 'Fetch' in self.sim_object.robot.get_name():
+            # this section is the Fetch section got until you get grasp_T
             self.sim_object.robot.activate_manip_joints()
 
             rot_Z = useful_functions.rotmat_from_rotvec([0, 0, -np.pi/2])
@@ -396,7 +396,7 @@ class CafeWorld(object):
         else:
             surface_type = "table"
         
-        if 'fetch' in self.sim_object.robot.get_name():
+        if 'Fetch' in self.sim_object.robot.get_name():
             wrist_roll_pose = self.sim_object.robot.get_link_transform("wrist_roll_link")
             gripper_pose = self.sim_object.robot.get_link_transform("gripper_link")
             wrist_pose_wrt_gripper = np.matmul(np.linalg.inv(gripper_pose), wrist_roll_pose)
@@ -428,7 +428,7 @@ class CafeWorld(object):
             sampler = getattr(self,"sample_can_{}".format(surface_type))
             sample_obj_pose = sampler(object_name=obj_name,surface_name=surface_name,range=quadrant_range)
             
-            if 'fetch' in self.sim_object.robot.get_name():
+            if 'Fetch' in self.sim_object.robot.get_name():
                 sample_obj_pose[2,3] += self.can_h/2.0
                 grasp_pose = sample_obj_pose.dot(wrist_pose_wrt_gripper)
 
@@ -855,8 +855,8 @@ class CafeWorld(object):
                     state_1 = self.sim_object.get_state_block(traj=[random_pose],config_tuple=init_config)
                     # state_1 = [self.sim_object.get_current_state()]
 
-                    # want in the case of fetch to move to table before planning, in case of hsr we dont care plan as one
-                    if 'fetch' in self.sim_object.robot.get_name():
+                    # want in the case of Fetch to move to table before planning, in case of hsr we dont care plan as one
+                    if 'Fetch' in self.sim_object.robot.get_name():
                         base_sampler = getattr(self,"sample_robot_base_{}".format(surface1_type))
 
                         # print("sampling surface 1")
@@ -887,7 +887,7 @@ class CafeWorld(object):
                             flag=2
                         break
                     
-                    if 'fetch' in self.sim_object.robot.get_name():
+                    if 'Fetch' in self.sim_object.robot.get_name():
                         self.sim_object.robot.activate_base_joints()
                         self.sim_object.robot.set_active_dof_values(init_base_pose)
                         # print("motion planning for base to surface 1")
@@ -926,20 +926,22 @@ class CafeWorld(object):
                         random_pose = self.get_random_base_config(random_limits=random_limits)
                         state_7 = self.sim_object.get_state_block(traj=[random_pose],config_tuple=init_config)
 
-                    # print("sampling surface 2")
-                    base_sampler = getattr(self,"sample_robot_base_{}".format(surface2_type))
-                    base_sample_2,_ = base_sampler(surface_name=surface2_name)
-                    if base_sample_2 is None:
-                        if j == 0:
-                            flag=1
-                        else:
-                            flag=2
-                        break
+                    # only base sample on Fetch
+                    if 'Fetch' in self.sim_object.robot.get_name():
+                        # print("sampling surface 2")
+                        base_sampler = getattr(self,"sample_robot_base_{}".format(surface2_type))
+                        base_sample_2,_ = base_sampler(surface_name=surface2_name)
+                        if base_sample_2 is None:
+                            if j == 0:
+                                flag=1
+                            else:
+                                flag=2
+                            break
 
-                    self.sim_object.robot.activate_base_joints()
-                    init_base_pose = self.sim_object.robot.get_active_dof_values()
-                    self.sim_object.robot.set_active_dof_values(base_sample_2)
-                    
+                        self.sim_object.robot.activate_base_joints()
+                        init_base_pose = self.sim_object.robot.get_active_dof_values()
+                        self.sim_object.robot.set_active_dof_values(base_sample_2)
+                        
                     # print("trying to put down object")
                     traj_5 = None
                     count = 0
@@ -960,20 +962,25 @@ class CafeWorld(object):
                             flag=2
                         break
                     
-                    self.sim_object.robot.activate_base_joints()
-                    self.sim_object.robot.set_active_dof_values(init_base_pose)
+                    # only move base if Fetch since not base sampling
+                    if 'Fetch' in self.sim_object.robot.get_name():
+                        self.sim_object.robot.activate_base_joints()
+                        self.sim_object.robot.set_active_dof_values(init_base_pose)
 
-                    # print("motion planning to surface 2")
-                    traj_4, base_sample_2 = self.motion_plan_robot_base(config_tuple=goal_config,given_pose=base_sample_2)
-                    if traj_4 is None:
-                        if j == 0:
-                            flag=1
-                        else:
-                            flag=2
-                        break
+                        # print("motion planning to surface 2")
+                        traj_4, base_sample_2 = self.motion_plan_robot_base(config_tuple=goal_config,given_pose=base_sample_2)
+                        if traj_4 is None:
+                            if j == 0:
+                                flag=1
+                            else:
+                                flag=2
+                            break
                         
                     #KP_8
-                    state_8 = self.sim_object.get_state_block(traj=traj_4,config_tuple=goal_config)
+                    if 'Fetch' in self.sim_object.robot.get_name():
+                        state_8 = self.sim_object.get_state_block(traj=traj_4,config_tuple=goal_config)
+                    elif 'hsr' in self.sim_object.robot.get_name():
+                        state_8 = self.sim_object.get_state_block(traj=traj_5,config_tuple=goal_config)
                     
                     #KP_9 and KP_10
                     state_9_10 = self.sim_object.get_state_block(traj=traj_5,config_tuple=goal_config,grab=False)
